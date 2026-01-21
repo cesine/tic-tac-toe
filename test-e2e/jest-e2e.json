@@ -11,5 +11,13 @@
     "!src/main.ts",
     "!src/**/*.spec.ts"
   ],
-  "coverageDirectory": "coverage"
+  "coverageDirectory": "coverage",
+  "coverageThreshold": {
+    "global": {
+      "branches": 75,
+      "functions": 100,
+      "lines": 100,
+      "statements": 100
+    }
+  }
 }

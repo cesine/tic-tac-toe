@@ -51,9 +51,30 @@ npm run test:cov
 # Run unit tests in watch mode
 npm run test:watch
 
-# Run e2e tests
+# Run integration/e2e tests
 npm run test:e2e
+
+# Run integration tests with coverage
+npm run test:integration -- --coverage
 ```
+
+### Coverage Thresholds
+
+The project enforces minimum coverage thresholds to ensure code quality:
+
+**Unit Tests** (enforced via `package.json`):
+- Statements: 37%
+- Branches: 50%
+- Functions: 50%
+- Lines: 33%
+
+**Integration Tests** (enforced via `test-e2e/jest-e2e.json`):
+- Statements: 100%
+- Branches: 75%
+- Functions: 100%
+- Lines: 100%
+
+Tests will fail if coverage drops below these thresholds. Run tests with `--coverage` flag to check current coverage levels.
 
 ## Code Quality
 
