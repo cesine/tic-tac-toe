@@ -26,6 +26,7 @@ describe('AppController (e2e)', () => {
   it('/graphql (POST) - hello query', () => {
     return request(app.getHttpServer())
       .post('/graphql')
+      .set('Content-Type', 'application/json')
       .send({
         query: '{ hello }',
       })
