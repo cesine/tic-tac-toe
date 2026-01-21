@@ -4,6 +4,15 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
+interface GraphQLResponse<T = unknown> {
+  data?: T;
+  errors?: Array<{ message: string }>;
+}
+
+interface HelloQueryResponse {
+  hello: string;
+}
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -32,8 +41,8 @@ describe('AppController (e2e)', () => {
       })
       .expect(200)
       .expect((res) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        expect(res.body.data.hello).toBe('Hello World from GraphQL!');
+        const body = res.body as GraphQLResponse<HelloQueryResponse>;
+        expect(body.data?.hello).toBe('Hello World from GraphQL!');
       });
   });
 });
