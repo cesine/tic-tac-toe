@@ -15,25 +15,38 @@ interface HelloQueryResponse {
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
+  let baseUrl: string;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    // If BASE_URL is provided, test against remote deployment
+    if (process.env.BASE_URL) {
+      baseUrl = process.env.BASE_URL;
+    } else {
+      // Otherwise, test against local app instance
+      const moduleFixture: TestingModule = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+      app = moduleFixture.createNestApplication();
+      await app.init();
+      baseUrl = '';
+    }
+  });
+
+  afterEach(async () => {
+    if (app) {
+      await app.close();
+    }
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+    const req = baseUrl ? request(baseUrl) : request(app.getHttpServer());
+    return req.get('/').expect(200).expect('Hello World!');
   });
 
   it('/graphql (POST) - hello query', () => {
-    return request(app.getHttpServer())
+    const req = baseUrl ? request(baseUrl) : request(app.getHttpServer());
+    return req
       .post('/graphql')
       .set('Content-Type', 'application/json')
       .send({

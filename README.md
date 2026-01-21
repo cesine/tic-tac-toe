@@ -79,26 +79,45 @@ The compiled output will be in the `dist/` directory.
 
 ## CI/CD
 
-This project uses GitHub Actions for continuous integration and deployment:
+This project uses GitHub Actions for continuous integration:
 
 - **Lint**: Runs ESLint and Prettier checks
 - **Build**: Compiles the TypeScript code
 - **Unit Tests**: Runs unit tests with coverage
-- **Integration Tests**: Runs integration tests
-- **E2E Tests**: Runs end-to-end tests
+- **Integration Tests**: Runs integration tests locally
 
-The workflow is triggered on push and pull requests to `main` and `develop` branches.
+The CI workflow is triggered on push and pull requests to the `main` branch.
+
+### E2E Testing
+
+E2E tests run against actual Vercel deployments using a separate workflow triggered by Vercel deployment webhooks:
+
+- Tests run automatically after each successful deployment (both preview and production)
+- Tests use the actual deployed URL to validate the live application
+- PR preview deployments receive automatic test result comments
 
 ## Deployment
 
-The application is configured for deployment to Vercel. The `vercel.json` configuration file is included in the repository.
+The application deploys automatically to Vercel via GitHub integration:
 
-To deploy:
+1. **Connect Repository to Vercel**:
+   - Import your GitHub repository in Vercel
+   - Vercel will automatically deploy on every push
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Run: `vercel`
+2. **Configure Deployment Webhook** (for E2E tests):
+   - Go to your Vercel project settings
+   - Navigate to "Git" → "Deploy Hooks"
+   - Create a webhook that triggers GitHub Actions on deployment
+   - Configure it to send `repository_dispatch` events to trigger the E2E workflow
 
-Or connect your GitHub repository to Vercel for automatic deployments.
+3. **Local Development**:
+   - Install Vercel CLI: `npm i -g vercel`
+   - Run: `vercel` for preview deployments
+
+### Environment Variables
+
+For local development and testing, you can set:
+- `BASE_URL`: The URL to run e2e tests against (defaults to local test instance)
 
 ## Technology Stack
 
