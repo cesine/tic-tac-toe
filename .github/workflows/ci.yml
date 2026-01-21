@@ -96,7 +96,15 @@ jobs:
         run: npm ci
       
       - name: Run integration tests
-        run: npm run test:e2e
+        run: npm run test:integration -- --coverage
+        
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-integration
+          path: coverage/
+          retention-days: 7
         
       - name: Upload test results
         if: always()

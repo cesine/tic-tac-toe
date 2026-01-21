@@ -17,7 +17,7 @@ describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let baseUrl: string;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     // If BASE_URL is provided, test against remote deployment
     if (process.env.BASE_URL) {
       baseUrl = process.env.BASE_URL;
@@ -33,7 +33,7 @@ describe('AppController (e2e)', () => {
     }
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     if (app) {
       await app.close();
     }
