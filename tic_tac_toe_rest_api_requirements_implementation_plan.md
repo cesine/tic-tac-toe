@@ -378,3 +378,613 @@ If these aren’t specified, the safest default is:
 - **Pagination** for session listing.
 - **Seeded randomness** (optional) for non-optimal mode, *if ever desired*.
 
+
+---
+
+## 13) OpenAPI schema draft (OpenAPI 3.0)
+
+> **Defaults assumed for this draft** (until you decide otherwise):
+> - Coordinates are **0-based** (`x` and `y` in `0..2`)
+> - Human is **X** and goes first
+> - No authentication; **session history is global**
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Tic-Tac-Toe REST API
+  version: 1.0.0
+  description: |
+    REST API for playing Tic-Tac-Toe (Noughts and Crosses) against an optimal AI.
+    This spec assumes 0-based coordinates (x,y in 0..2), human=X goes first.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Sessions
+  - name: Moves
+  - name: Health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /v1/sessions:
+    post:
+      tags: [Sessions]
+      summary: Create a new game session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Sessions]
+      summary: List sessions (chronological, newest last by default)
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Maximum number of sessions to return.
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          description: Optional pagination cursor.
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+          description: Sort by createdAt.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+
+  /v1/sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      summary: Get session state
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sessions/{sessionId}/moves:
+    post:
+      tags: [Moves]
+      summary: Make the next human move
+      description: |
+        Submits the human player's next move. The server enforces turn order.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+          description: Optional idempotency key for safely retrying requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveRequest'
+            examples:
+              center:
+                value: { "x": 1, "y": 1 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '400':
+          description: Invalid move payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Move rejected due to game state (occupied cell, wrong turn, finished)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags: [Moves]
+      summary: Game history (moves for a session)
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameHistory'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/sessions/{sessionId}/ai-move:
+    post:
+      tags: [Moves]
+      summary: Let the AI make the next optimal move
+      description: |
+        Applies the AI's optimal move to the session. The server enforces turn order.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+          description: Optional idempotency key for safely retrying requests.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Move rejected due to game state (wrong turn, finished)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    SessionId:
+      in: path
+      name: sessionId
+      required: true
+      schema:
+        type: string
+      description: Session identifier
+
+  schemas:
+    CreateSessionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        humanMark:
+          $ref: '#/components/schemas/Mark'
+        startingPlayer:
+          type: string
+          enum: [HUMAN, AI]
+      description: |
+        Optional configuration. If omitted: humanMark=X, startingPlayer=HUMAN.
+
+    MoveRequest:
+      type: object
+      additionalProperties: false
+      required: [x, y]
+      properties:
+        x:
+          type: integer
+          minimum: 0
+          maximum: 2
+        y:
+          type: integer
+          minimum: 0
+          maximum: 2
+
+    SessionState:
+      type: object
+      additionalProperties: false
+      required: [gameId, createdAt, updatedAt, status, board, humanMark, aiMark, nextTurn, moveNumber]
+      properties:
+        gameId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/GameStatus'
+        winner:
+          $ref: '#/components/schemas/Winner'
+        board:
+          $ref: '#/components/schemas/Board'
+        humanMark:
+          $ref: '#/components/schemas/Mark'
+        aiMark:
+          $ref: '#/components/schemas/Mark'
+        nextTurn:
+          $ref: '#/components/schemas/Mark'
+          description: Which mark is expected to move next (X or O).
+        moveNumber:
+          type: integer
+          minimum: 0
+          maximum: 9
+          description: Number of moves already played (ply count).
+        lastMove:
+          $ref: '#/components/schemas/Move'
+
+    SessionList:
+      type: object
+      additionalProperties: false
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
+        nextCursor:
+          type: string
+          nullable: true
+
+    SessionSummary:
+      type: object
+      additionalProperties: false
+      required: [gameId, createdAt, status]
+      properties:
+        gameId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/GameStatus'
+        winner:
+          $ref: '#/components/schemas/Winner'
+        finalBoard:
+          $ref: '#/components/schemas/Board'
+
+    GameHistory:
+      type: object
+      additionalProperties: false
+      required: [gameId, moves]
+      properties:
+        gameId:
+          type: string
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/Move'
+
+    Move:
+      type: object
+      additionalProperties: false
+      required: [moveNumber, player, x, y, createdAt]
+      properties:
+        moveNumber:
+          type: integer
+          minimum: 0
+          maximum: 8
+        player:
+          $ref: '#/components/schemas/Mark'
+        x:
+          type: integer
+          minimum: 0
+          maximum: 2
+        y:
+          type: integer
+          minimum: 0
+          maximum: 2
+        createdAt:
+          type: string
+          format: date-time
+
+    Board:
+      type: array
+      minItems: 3
+      maxItems: 3
+      items:
+        type: array
+        minItems: 3
+        maxItems: 3
+        items:
+          $ref: '#/components/schemas/Cell'
+      example:
+        - ['.', '.', '.']
+        - ['.', 'X', '.']
+        - ['O', '.', 'O']
+
+    Cell:
+      type: string
+      enum: ['.', 'X', 'O']
+
+    Mark:
+      type: string
+      enum: ['X', 'O']
+
+    Winner:
+      type: string
+      enum: ['X', 'O']
+      nullable: true
+
+    GameStatus:
+      type: string
+      enum:
+        - IN_PROGRESS
+        - WON_X
+        - WON_O
+        - DRAW
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: INVALID_MOVE
+        message:
+          type: string
+          example: Cell already occupied.
+        details:
+          type: object
+          additionalProperties: true
+```
+
+### Suggested error codes
+- `INVALID_COORDINATES` (400)
+- `INVALID_PAYLOAD` (400)
+- `SESSION_NOT_FOUND` (404)
+- `CELL_OCCUPIED` (409)
+- `WRONG_TURN` (409)
+- `GAME_FINISHED` (409)
+
+---
+
+## 14) Detailed task list (Agentive tickets)
+
+> Format: **Ticket** — goal, key tasks, acceptance criteria, dependencies.
+
+### A. Product decisions (fast unblock)
+**TT-0001 — Confirm product decisions / defaults**
+- Decide: auth vs no-auth; coordinate convention; who goes first; session ordering; pagination; response shape.
+- Produce: short “decisions.md” capturing defaults.
+- **Acceptance**: decisions.md committed; OpenAPI matches decisions.
+- **Dependencies**: none.
+
+**TT-0002 — API contract freeze**
+- Finalize OpenAPI and example payloads.
+- Add mock responses/examples (optional).
+- **Acceptance**: OpenAPI validates; examples cover typical flow.
+- **Dependencies**: TT-0001.
+
+---
+
+### B. Repository + tooling
+**TT-0101 — Repo scaffold + build tooling**
+- Create folder structure: `src/` (api/domain/persistence), `tests/`, `migrations/`, `scripts/`.
+- Add formatting/linting/test commands and Makefile targets.
+- **Acceptance**: `make lint` + `make test` run locally.
+- **Dependencies**: TT-0001 (language selection).
+
+**TT-0102 — CI pipeline**
+- Configure CI to run lint + tests on PR.
+- **Acceptance**: CI green on main.
+- **Dependencies**: TT-0101.
+
+---
+
+### C. Domain engine (rules)
+**TT-0201 — Domain models**
+- Define domain types: `Mark`, `Cell`, `Board`, `Move`, `GameStatus`, `GameSession`.
+- Ensure immutability where appropriate (board copies vs in-place).
+- **Acceptance**: Type checks pass; basic constructors tested.
+- **Dependencies**: TT-0101.
+
+**TT-0202 — Move validation + apply move**
+- Validate bounds and emptiness.
+- Apply mark to board; update nextTurn.
+- **Acceptance**: Unit tests cover out-of-range, occupied, correct placement.
+- **Dependencies**: TT-0201.
+
+**TT-0203 — Win/draw detection**
+- Implement `evaluate(board) -> status/winner`.
+- **Acceptance**: Unit tests cover all 8 win lines, draw, and in-progress.
+- **Dependencies**: TT-0201.
+
+**TT-0204 — Legal move generation**
+- Implement `listLegalMoves(board)`.
+- **Acceptance**: Unit test verifies correct count/positions.
+- **Dependencies**: TT-0201.
+
+---
+
+### D. AI (optimal)
+**TT-0301 — Minimax + alpha-beta implementation**
+- Implement deterministic tie-break (e.g., center > corners > edges OR stable ordering).
+- Return best move for AI mark.
+- **Acceptance**: Unit tests include classic forks/traps; AI never loses.
+- **Dependencies**: TT-0202, TT-0203, TT-0204.
+
+**TT-0302 — AI integration tests**
+- Simulate full games from various starting positions.
+- **Acceptance**: Tests show AI results in win when possible; otherwise draw.
+- **Dependencies**: TT-0301.
+
+---
+
+### E. Persistence
+**TT-0401 — DB schema + migrations**
+- Create `sessions` + `moves` tables (SQLite by default).
+- Include indexes: `moves(sessionId, moveNumber)`; `sessions(createdAt)`.
+- **Acceptance**: migrations run cleanly from empty DB.
+- **Dependencies**: TT-0101.
+
+**TT-0402 — Repository: sessions**
+- `createSession(config)`, `getSession(id)`, `listSessions(order, limit, cursor)`.
+- **Acceptance**: Integration tests for create/get/list.
+- **Dependencies**: TT-0401.
+
+**TT-0403 — Repository: moves**
+- `appendMove(sessionId, move)`, `listMoves(sessionId)`.
+- Enforce monotonic `moveNumber` and atomic insert (transaction).
+- **Acceptance**: Integration tests verify ordering and atomicity.
+- **Dependencies**: TT-0401.
+
+**TT-0404 — Reconstruct board from moves**
+- Domain service function that rebuilds board/status from session config + move list.
+- **Acceptance**: Unit tests compare reconstructed board to expected.
+- **Dependencies**: TT-0202, TT-0203, TT-0403.
+
+---
+
+### F. Service layer (orchestrating rules + persistence)
+**TT-0501 — Game service: create session**
+- Create session record; return initial state.
+- **Acceptance**: Service tests verify initial board, nextTurn, status.
+- **Dependencies**: TT-0402.
+
+**TT-0502 — Game service: human move**
+- Load session + moves, validate turn, validate move, append move, compute status.
+- **Acceptance**: Tests for wrong turn, occupied, finished game.
+- **Dependencies**: TT-0202/0203, TT-0402/0403/0404.
+
+**TT-0503 — Game service: AI move**
+- Load state, validate AI turn, compute best move, append, return updated state.
+- **Acceptance**: Tests confirm deterministic best move and correct status transitions.
+- **Dependencies**: TT-0301, TT-0502.
+
+**TT-0504 — Concurrency protection**
+- Implement one of:
+  - DB transaction with `moveNumber` uniqueness + retry, or
+  - session version field (optimistic concurrency).
+- **Acceptance**: Simulated concurrent requests do not corrupt move sequence.
+- **Dependencies**: TT-0403, TT-0502.
+
+---
+
+### G. REST API
+**TT-0601 — HTTP server + routing**
+- Set up framework, `/health`, base middleware.
+- **Acceptance**: `/health` returns ok.
+- **Dependencies**: TT-0101.
+
+**TT-0602 — Implement POST /v1/sessions**
+- Wire to game service; return 201 with state.
+- **Acceptance**: E2E test creates session and returns empty board.
+- **Dependencies**: TT-0501, TT-0601.
+
+**TT-0603 — Implement POST /v1/sessions/{id}/moves**
+- Validate payload; map domain errors to HTTP codes.
+- **Acceptance**: E2E test for a valid move; invalid move returns 400/409.
+- **Dependencies**: TT-0502.
+
+**TT-0604 — Implement POST /v1/sessions/{id}/ai-move**
+- **Acceptance**: E2E test: after human move, AI move returns updated board.
+- **Dependencies**: TT-0503.
+
+**TT-0605 — Implement GET /v1/sessions/{id}/moves**
+- Return chronological move list.
+- **Acceptance**: E2E test confirms ordering and shape.
+- **Dependencies**: TT-0403.
+
+**TT-0606 — Implement GET /v1/sessions**
+- Return chronological session list (with pagination).
+- **Acceptance**: E2E test returns expected ordering.
+- **Dependencies**: TT-0402.
+
+**TT-0607 — OpenAPI + Swagger UI**
+- Serve OpenAPI doc; auto-generate if framework supports.
+- **Acceptance**: Swagger UI loads and can exercise endpoints.
+- **Dependencies**: TT-0002, TT-0601.
+
+---
+
+### H. Quality, docs, and release
+**TT-0701 — Structured logging + request IDs**
+- Add request ID middleware and structured logs.
+- **Acceptance**: logs include requestId, path, status code.
+- **Dependencies**: TT-0601.
+
+**TT-0702 — Docker + docker-compose**
+- Containerize API; SQLite volume; env vars.
+- **Acceptance**: `docker compose up` works and persists DB.
+- **Dependencies**: TT-0601.
+
+**TT-0703 — README delivery**
+- Run instructions (local + docker), assumptions, trade-offs, curl examples.
+- **Acceptance**: new developer can run in <10 minutes.
+- **Dependencies**: TT-0702, TT-0607.
+
+---
+
+### Optional “high leverage” tickets (recommended if time allows)
+**TT-0801 — Idempotency-Key support**
+- Store key per session/move to dedupe retries.
+- **Acceptance**: repeated requests with same key return same result.
+
+**TT-0802 — Session version / ETag**
+- Return ETag; require `If-Match` for move endpoints.
+- **Acceptance**: conflicting updates return 412.
+
+**TT-0803 — Auth (if required later)**
+- Add JWT or API key; scope sessions by user.
+- **Acceptance**: session listing only includes user’s sessions.
+
