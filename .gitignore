@@ -140,3 +140,9 @@ vite.config.ts.timestamp-*
 
 # Generated GraphQL schema
 src/schema.gql
+
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json
