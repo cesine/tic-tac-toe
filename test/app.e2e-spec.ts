@@ -22,4 +22,17 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect('Hello World!');
   });
+
+  it('/graphql (POST) - hello query', () => {
+    return request(app.getHttpServer())
+      .post('/graphql')
+      .send({
+        query: '{ hello }',
+      })
+      .expect(200)
+      .expect((res) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(res.body.data.hello).toBe('Hello World from GraphQL!');
+      });
+  });
 });
