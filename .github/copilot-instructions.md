@@ -96,20 +96,19 @@ Integration Tests (via `test-e2e/jest-e2e.json`):
 
 ### API Documentation
 
-**REST (Swagger/OpenAPI):**
-- Use `@ApiTags`, `@ApiOperation`, `@ApiResponse` decorators
-- Add `@ApiProperty` to DTOs
-- Every endpoint needs operation summary and response types
+**REST:**
+- Currently using basic NestJS controllers with `@Controller`, `@Get`, `@Post`, etc.
+- No Swagger/OpenAPI integration yet (consider adding `@nestjs/swagger` if API documentation is needed)
 
 **GraphQL (Code-First):**
 - Use `@ObjectType`, `@Field`, `@InputType`, `@Args` decorators
 - Use `@Query` and `@Mutation` for resolvers
-- Schema auto-generates at `src/schema.gql`
-- Add descriptive comments for GraphQL playground
+- Schema auto-generates at `src/schema.gql` when the application starts
+- GraphQL playground available at `/graphql` endpoint
 
 **Validation:**
-- Use `class-validator` and `class-transformer` in DTOs
-- Ensure validation rules reflect in Swagger/GraphQL schemas
+- NestJS built-in `ValidationPipe` can be used
+- Consider adding `class-validator` and `class-transformer` packages for DTO validation if needed
 
 ## Code Style
 
@@ -154,8 +153,8 @@ Before implementing:
 ### Creating a New REST Endpoint
 
 1. Write E2E test in `test-e2e/`
-2. Create/update controller with `@ApiOperation` decorator
-3. Create/update DTO with validation and `@ApiProperty`
+2. Create/update controller with appropriate decorators (`@Controller`, `@Get`, `@Post`, etc.)
+3. Create/update DTOs if needed (consider adding validation packages like `class-validator` for complex validation)
 4. Implement service logic
 5. Run tests to verify
 
@@ -163,17 +162,18 @@ Before implementing:
 
 1. Write E2E test sending query/mutation to `/graphql`
 2. Create/update resolver with `@Query` or `@Mutation`
-3. Define `@ObjectType` and `@InputType` classes
+3. Define `@ObjectType` and `@InputType` classes with `@Field` decorators
 4. Implement resolver logic
-5. Verify `src/schema.gql` updates correctly
+5. Start the app to verify `src/schema.gql` generates correctly
 6. Run tests to verify
 
-### Adding Validation
+### Adding Validation (if needed)
 
-1. Add `class-validator` decorators to DTO
-2. Ensure `ValidationPipe` is configured
-3. Test invalid inputs return proper errors
-4. Verify OpenAPI/GraphQL schema reflects validation
+1. Install validation packages: `npm install class-validator class-transformer`
+2. Add decorators to DTOs (`@IsString`, `@IsEmail`, `@MinLength`, etc.)
+3. Ensure `ValidationPipe` is configured in `main.ts`
+4. Test invalid inputs return proper errors
+5. Verify GraphQL schema reflects validation rules
 
 ## Additional Resources
 
@@ -187,6 +187,6 @@ Before implementing:
 
 1. **Test-Driven Development**: Always write tests first
 2. **Minimal Changes**: Make the smallest change that works
-3. **Documentation**: Keep Swagger/GraphQL schemas up-to-date
+3. **Documentation**: Keep code well-documented and schemas up-to-date
 4. **Quality**: Maintain coverage thresholds and pass all checks
 5. **Consistency**: Follow existing patterns and conventions
