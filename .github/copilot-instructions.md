@@ -96,15 +96,11 @@ Integration Tests (via `test-e2e/jest-e2e.json`):
 
 ### API Documentation
 
-**REST:**
-- Currently using basic NestJS controllers with `@Controller`, `@Get`, `@Post`, etc.
-- No Swagger/OpenAPI integration yet (consider adding `@nestjs/swagger` if API documentation is needed)
+**REST (Swagger/OpenAPI):**
+- TBD
 
 **GraphQL (Code-First):**
-- Use `@ObjectType`, `@Field`, `@InputType`, `@Args` decorators
-- Use `@Query` and `@Mutation` for resolvers
-- Schema auto-generates at `src/schema.gql` when the application starts
-- GraphQL playground available at `/graphql` endpoint
+- TBD
 
 **Validation:**
 - NestJS built-in `ValidationPipe` can be used
