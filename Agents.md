@@ -34,5 +34,6 @@
 
 ## Design Decisions
 - Consider at least two implementation options before coding.
-- Record the decision in the PR/notes with links to supporting sources
+- Record the decision in the README for the relevant directory (e.g.,
+  persistence, models, OpenAPI). Include links to supporting sources
   (docs, articles, blogs, or similar).
