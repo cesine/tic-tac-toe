@@ -21,8 +21,9 @@ Non-goals (unless explicitly added later): UI, multiplayer PvP, realtime websock
   - User can choose their preferred symbol when creating a game.
 - Turn-based:
   - At game creation, a coin flip determines which player goes first.
-  - The first player is assigned the first symbol, the second player is assigned the second symbol.
-  - Default behavior: if human wins coin flip → human gets X (or their chosen symbol) and goes first; if AI wins → AI gets X (or first symbol) and goes first.
+  - The first player is assigned the first symbol (default "X"), the second player is assigned the second symbol (default "O").
+  - This applies regardless of whether first player is human or AI.
+  - If user specifies custom symbols, first player gets the first custom symbol, second gets the second.
   - Enforce correct turn order (cannot play twice).
 - Valid move:
   - Cell must be empty.
@@ -461,7 +462,7 @@ paths:
                     type: string
                     example: ok
 
-  /v1/sessions:
+  /v1/games:
     post:
       tags: [Sessions]
       summary: Create a new game session
@@ -517,7 +518,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SessionList'
 
-  /v1/sessions/{gameId}:
+  /v1/games/{gameId}:
     get:
       tags: [Sessions]
       summary: Get session state
@@ -537,7 +538,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /v1/sessions/{gameId}/moves:
+  /v1/games/{gameId}/moves:
     post:
       tags: [Moves]
       summary: Make the next human move
@@ -605,7 +606,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /v1/sessions/{gameId}/ai-move:
+  /v1/games/{gameId}/ai-move:
     post:
       tags: [Moves]
       summary: Let the AI make the next optimal move
