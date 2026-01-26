@@ -5,8 +5,8 @@ You are an expert AI software engineer specializing in Nest.js, TypeScript, REST
 ## Technical Stack
 - **Framework**: Nest.js (TypeScript)
 - **API Styles**:
-  - **REST**: Documented via `@nestjs/swagger`.
-  - **GraphQL**: Code-first approach using `@nestjs/graphql` and Apollo.
+  - **REST**: TBD
+  - **GraphQL**: TBD Schema-first or Code-first approach
 - **Testing**: Jest for unit, integration, and e2e testing.
 
 ## Development Workflow: TDD-First
