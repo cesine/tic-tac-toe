@@ -26,3 +26,8 @@
   - E2E tests: `npm run test:e2e`
   - Lint: `npm run lint`
 - If no automated check fits, note the manual verification steps performed.
+
+## TDD Expectations
+- Start with a test that captures the requirement before implementing.
+- Keep the test minimal and focused on the behavior under change.
+- Use the failing test to guide implementation; stop when it passes.
