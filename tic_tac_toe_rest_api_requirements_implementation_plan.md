@@ -18,7 +18,8 @@ Non-goals (unless explicitly added later): UI, multiplayer PvP, realtime websock
 - Board is **3×3**, coordinates are `{x, y}` with **0–2** bounds (or 1–3; must be consistent and documented).
 - Two symbols: **X** and **O**.
 - Turn-based:
-  - Define which side the human is (default: human = X, AI = O).
+  - Player assignments (X and O) are determined by coin flip at session creation.
+  - The coin flip also determines who goes first.
   - Enforce correct turn order (cannot play twice).
 - Valid move:
   - Cell must be empty.
@@ -88,8 +89,9 @@ Required error cases:
 - Metrics hooks (optional).
 
 ### 3.4 Security
-- If no authentication is required, clearly document that **SessionHistory is global**.
-- If authentication is required, sessions must be per-user.
+- **Authentication**: Using `anonymousId` - a UUID generated if missing and stored in the user's browser as a cookie. This enables per-user session history while maintaining simplicity.
+- Sessions are per-user, scoped by `anonymousId`.
+- The `anonymousId` allows tracking user sessions without requiring traditional login/signup flows.
 
 ---
 
@@ -136,11 +138,11 @@ Example routes:
 
 **Cons**
 - Data lost on restart; no multi-instance scaling.
-- Hard to meet “web service” expectations.
+- Hard to meet "web service" expectations.
 
 **Best for**: demo/prototype.
 
-### Option 2: SQLite (recommended default)
+### Option 2: SQLite
 **Pros**
 - Persistent, zero external dependencies.
 - Works in containers.
@@ -159,9 +161,22 @@ Example routes:
 
 **Best for**: real production usage.
 
-**Missing info to choose**
-- Expected traffic and hosting environment.
-- Need for horizontal scaling.
+### Option 4: Firebase (chosen)
+**Pros**
+- Real-time database with excellent scalability.
+- Managed service with zero infrastructure maintenance.
+- Built-in authentication support.
+- Works seamlessly with Vercel deployments.
+- Automatic data synchronization.
+
+**Cons**
+- Vendor lock-in.
+- Requires internet connectivity.
+- Pricing based on usage.
+
+**Best for**: cloud-first applications with real-time requirements.
+
+**Decision**: Using Firebase for its managed infrastructure, scalability, and seamless integration with Vercel hosting.
 
 ---
 
@@ -282,19 +297,21 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 ---
 
 ### Phase 2 — Persistence
-5. **DB schema + migrations**
-   - `sessions` table.
-   - `moves` table.
+5. **Firebase setup + schema design**
+   - `sessions` collection: stores game sessions with metadata.
+   - `moves` subcollection: stores moves for each session.
+   - Schema includes `anonymousId` for per-user session tracking.
 
 6. **Repository layer**
-   - Create session.
+   - Create session with coin flip mechanism to determine who goes first.
    - Add move with moveNumber sequencing.
    - Load session + moves.
-   - List sessions.
+   - List sessions filtered by `anonymousId`.
 
 **Acceptance criteria**
-- Integration tests against SQLite.
+- Integration tests against Firebase emulator.
 - Move insertion is atomic and ordered.
+- Coin flip correctly randomizes starting player.
 
 ---
 
@@ -319,8 +336,10 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 ---
 
 ### Phase 4 — Operational readiness
-10. **Dockerization**
-- Dockerfile + docker-compose (SQLite volume).
+10. **Deployment configuration**
+- Vercel configuration for cloud deployment.
+- Firebase credentials and environment setup.
+- Local development setup with Firebase emulator.
 
 11. **Health + logging**
 - `/health` endpoint.
@@ -340,25 +359,34 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 ## 10) Missing product decisions (to stay on spec, time, budget)
 These materially impact design:
 1. **Authentication / user identity**
-   - Is “Session History” per-user or global?
+   - Is "Session History" per-user or global?
+   - **Decision: Use `anonymousId`** - A UUID that is generated if missing and stored in the user's browser as a cookie for authentication. This enables per-user session history while maintaining simplicity.
 2. **Coordinate convention**
    - 0-based vs 1-based.
+   - **Decision: Use 0-based coordinates** for array/matrix indexing consistency.
 3. **Who goes first**
    - Always human first? Configurable?
+   - **Decision: Use a coin flip mechanism** to randomly determine who goes first when a new game session is created.
 4. **Draw/win status representation**
    - Strings vs enums; response shape.
+   - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "X_WINS", "O_WINS", "DRAW").
 5. **Hosting expectations**
    - Local only vs cloud deployment; need for Postgres.
+   - **Decision: Use Firebase for persistence** and **Vercel for cloud deployments**. Firebase provides real-time database capabilities and scales well, while Vercel offers seamless deployment for Node.js applications.
 6. **API versioning and backwards compatibility**
    - Required now or later?
+   - **Decision: Version API under `/v1`** from the start to enable future evolution without breaking changes.
+7. **API route structure**
+   - **Decision: Use REST Option A routes** (see section 4) with separate endpoints for human moves and AI moves for clear separation of concerns.
 
-If these aren’t specified, the safest default is:
-- No auth (global sessions),
-- 0-based coordinates,
-- human = X goes first,
-- SQLite persistence,
-- REST Option A routes,
-- versioned under `/v1`.
+### Summary of chosen options:
+- **Authentication:** `anonymousId` (UUID stored in browser cookie)
+- **Coordinates:** 0-based
+- **Who goes first:** Coin flip mechanism
+- **Persistence:** Firebase
+- **Hosting:** Vercel
+- **API routes:** REST Option A
+- **API versioning:** `/v1`
 
 ---
 
@@ -383,10 +411,10 @@ If these aren’t specified, the safest default is:
 
 ## 13) OpenAPI schema draft (OpenAPI 3.0)
 
-> **Defaults assumed for this draft** (until you decide otherwise):
+>**Decisions made**:
 > - Coordinates are **0-based** (`x` and `y` in `0..2`)
-> - Human is **X** and goes first
-> - No authentication; **session history is global**
+> - Player assignments and who goes first determined by **coin flip** at session creation
+> - Authentication via **`anonymousId`** (UUID in browser cookie); **session history is per-user**
 
 ```yaml
 openapi: 3.0.3
@@ -395,7 +423,8 @@ info:
   version: 1.0.0
   description: |
     REST API for playing Tic-Tac-Toe (Noughts and Crosses) against an optimal AI.
-    This spec assumes 0-based coordinates (x,y in 0..2), human=X goes first.
+    Uses 0-based coordinates (x,y in 0..2). Player assignments and first turn determined by coin flip.
+    Authentication via anonymousId cookie for per-user session tracking.
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -871,10 +900,11 @@ components:
 ---
 
 ### E. Persistence
-**TT-0401 — DB schema + migrations**
-- Create `sessions` + `moves` tables (SQLite by default).
-- Include indexes: `moves(sessionId, moveNumber)`; `sessions(createdAt)`.
-- **Acceptance**: migrations run cleanly from empty DB.
+**TT-0401 — Firebase schema design**
+- Design `sessions` collection with `anonymousId`, `firstPlayer` (determined by coin flip), and game metadata.
+- Design `moves` subcollection with `moveNumber`, `player`, `x`, `y` (0-based coordinates).
+- Include indexes: `sessions(anonymousId, createdAt)`.
+- **Acceptance**: schema documented and validated with Firebase emulator.
 - **Dependencies**: TT-0101.
 
 **TT-0402 — Repository: sessions**
@@ -963,9 +993,11 @@ components:
 - **Acceptance**: logs include requestId, path, status code.
 - **Dependencies**: TT-0601.
 
-**TT-0702 — Docker + docker-compose**
-- Containerize API; SQLite volume; env vars.
-- **Acceptance**: `docker compose up` works and persists DB.
+**TT-0702 — Vercel deployment configuration**
+- Configure Vercel for cloud deployment.
+- Set up Firebase credentials as environment variables.
+- Configure local development with Firebase emulator.
+- **Acceptance**: `vercel dev` works locally and production deployment succeeds.
 - **Dependencies**: TT-0601.
 
 **TT-0703 — README delivery**
