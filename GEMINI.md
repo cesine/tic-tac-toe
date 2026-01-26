@@ -37,7 +37,7 @@ To ensure documentation never drifts from the implementation:
 ## Verification Requirements
 Before considering a task complete:
 - [ ] All unit tests pass (`npm run test`).
-- [ ] Integration/E2E tests pass (`npm run test:e2e`).
+- [ ] Integration/E2E tests pass and coverage has not decreased (`npm run test:e2e`).
 - [ ] The generated Swagger JSON/UI reflects any changes to REST endpoints.
 - [ ] The `src/schema.gql` file is updated and correctly represents any GraphQL changes.
 - [ ] Code follows the established linting and formatting rules (`npm run lint`).
