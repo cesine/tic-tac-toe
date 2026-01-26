@@ -352,7 +352,8 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 - Assumptions + tradeoffs.
 
 **Acceptance criteria**
-- `docker compose up` starts service.
+- `vercel dev` runs service locally.
+- Vercel deployment succeeds.
 - README is complete.
 
 ---
@@ -370,7 +371,7 @@ These materially impact design:
    - **Decision: Use a coin flip mechanism** to randomly determine who goes first when a new game session is created.
 4. **Draw/win status representation**
    - Strings vs enums; response shape.
-   - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "X_WINS", "O_WINS", "DRAW").
+   - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "WON_X", "WON_O", "DRAW").
 5. **Hosting expectations**
    - Local only vs cloud deployment; need for Postgres.
    - **Decision: Use Firebase for persistence** and **Vercel for cloud deployments**. Firebase provides real-time database capabilities and scales well, while Vercel offers seamless deployment for Node.js applications.
