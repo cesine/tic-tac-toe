@@ -16,9 +16,11 @@ Non-goals (unless explicitly added later): UI, multiplayer PvP, realtime websock
 
 ### 2.1 Game rules
 - Board is **3×3**, coordinates are `{x, y}` with **0–2** bounds (or 1–3; must be consistent and documented).
-- Two symbols: **X** and **O**.
+- Two symbols: Customizable (any unicode character).
+  - Default: **X** and **O** if not specified by user.
+  - User can choose their preferred symbol for the humanSymbol (default is "X") and aiSymbol (default is "O") when creating a game.
 - Turn-based:
-  - Define which side the human is (default: human = X, AI = O).
+  - At game creation, a coin flip determines which player goes first.
   - Enforce correct turn order (cannot play twice).
 - Valid move:
   - Cell must be empty.
@@ -40,10 +42,10 @@ Provide endpoints to support:
 ### 2.3 Data returned
 Every state-changing endpoint should return at minimum:
 - `gameId`
-- `board` (3×3 array of strings: "." | "X" | "O")
-- `nextPlayer` ("HUMAN"/"AI" or "X"/"O")
-- `status` (IN_PROGRESS | WON_X | WON_O | DRAW)
-- `winner` (optional: X/O/null)
+- `board` (3×3 array of strings: "." for empty cells or any unicode character representing player symbols)
+- `nextPlayer` ("HUMAN"/"AI" or the symbol for next player)
+- `status` (IN_PROGRESS | WON_<symbol> | DRAW where <symbol> is the winning player's symbol)
+- `winner` (optional: symbol of winning player or null)
 - `lastMove` (optional)
 - `moveNumber` (ply count)
 
@@ -88,8 +90,9 @@ Required error cases:
 - Metrics hooks (optional).
 
 ### 3.4 Security
-- If no authentication is required, clearly document that **SessionHistory is global**.
-- If authentication is required, sessions must be per-user.
+- **Authentication**: Using `anonymousId` - a UUID generated if missing and stored in the user's browser as a cookie. This enables per-user game history while maintaining simplicity.
+- Sessions are per-user, scoped by `anonymousId`.
+- The `anonymousId` allows tracking user sessions without requiring traditional login/signup flows.
 
 ---
 
@@ -97,11 +100,11 @@ Required error cases:
 
 ### Option A: Classic REST (recommended)
 Example routes:
-- `POST /v1/sessions` → create
-- `POST /v1/sessions/{id}/moves` → user move
-- `POST /v1/sessions/{id}/ai-move` → AI move
-- `GET /v1/sessions/{id}/moves` → game history
-- `GET /v1/sessions` → session history
+- `POST /v1/games` → create
+- `POST /v1/games/{id}/moves` → user move
+- `POST /v1/games/{id}/ai-move` → AI move
+- `GET /v1/games/{id}/moves` → game history
+- `GET /v1/games` → game history
 
 **Pros**
 - Straightforward, easy to document, good separation.
@@ -114,7 +117,7 @@ Example routes:
 - Do you want a single endpoint that can accept either human or AI action?
 
 ### Option B: Single “advance” endpoint
-- `POST /v1/sessions/{id}/advance` with body `{ type: "HUMAN", x, y }` or `{ type: "AI" }`
+- `POST /v1/games/{id}/advance` with body `{ type: "HUMAN", x, y }` or `{ type: "AI" }`
 
 **Pros**
 - One endpoint for state transitions.
@@ -136,11 +139,11 @@ Example routes:
 
 **Cons**
 - Data lost on restart; no multi-instance scaling.
-- Hard to meet “web service” expectations.
+- Hard to meet "web service" expectations.
 
 **Best for**: demo/prototype.
 
-### Option 2: SQLite (recommended default)
+### Option 2: SQLite
 **Pros**
 - Persistent, zero external dependencies.
 - Works in containers.
@@ -159,9 +162,22 @@ Example routes:
 
 **Best for**: real production usage.
 
-**Missing info to choose**
-- Expected traffic and hosting environment.
-- Need for horizontal scaling.
+### Option 4: Firebase (chosen)
+**Pros**
+- Real-time database with excellent scalability.
+- Managed service with zero infrastructure maintenance.
+- Built-in authentication support.
+- Works seamlessly with Vercel deployments.
+- Automatic data synchronization.
+
+**Cons**
+- Vendor lock-in.
+- Requires internet connectivity.
+- Pricing based on usage.
+
+**Best for**: cloud-first applications with real-time requirements.
+
+**Decision**: Using Firebase for its managed infrastructure, scalability, and seamless integration with Vercel hosting.
 
 ---
 
@@ -200,7 +216,7 @@ Example routes:
 
 - **Move**
   - `id`
-  - `sessionId`
+  - `gameId`
   - `moveNumber` (0..8)
   - `player` (X/O)
   - `x`, `y`
@@ -282,29 +298,31 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 ---
 
 ### Phase 2 — Persistence
-5. **DB schema + migrations**
-   - `sessions` table.
-   - `moves` table.
+5. **Firebase setup + schema design**
+   - `games` collection: stores games with metadata.
+   - `moves` subcollection: stores moves for each game.
+   - Schema includes `anonymousId` for per-user game tracking.
 
 6. **Repository layer**
-   - Create session.
+   - Create game with coin flip mechanism to determine who goes first.
    - Add move with moveNumber sequencing.
-   - Load session + moves.
-   - List sessions.
+   - Load game + moves.
+   - List games filtered by `anonymousId`.
 
 **Acceptance criteria**
-- Integration tests against SQLite.
+- Integration tests against Firebase emulator.
 - Move insertion is atomic and ordered.
+- Coin flip correctly randomizes starting player.
 
 ---
 
 ### Phase 3 — REST API
 7. **API endpoints**
-   - `POST /v1/sessions`
-   - `POST /v1/sessions/{id}/moves`
-   - `POST /v1/sessions/{id}/ai-move`
-   - `GET /v1/sessions/{id}/moves`
-   - `GET /v1/sessions`
+   - `POST /v1/games`
+   - `POST /v1/games/{id}/moves`
+   - `POST /v1/games/{id}/ai-move`
+   - `GET /v1/games/{id}/moves`
+   - `GET /v1/games`
 
 8. **Validation + error mapping**
    - Consistent error codes.
@@ -319,8 +337,10 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 ---
 
 ### Phase 4 — Operational readiness
-10. **Dockerization**
-- Dockerfile + docker-compose (SQLite volume).
+10. **Deployment configuration**
+- Vercel configuration for cloud deployment.
+- Firebase credentials and environment setup.
+- Local development setup with Firebase emulator.
 
 11. **Health + logging**
 - `/health` endpoint.
@@ -332,7 +352,8 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 - Assumptions + tradeoffs.
 
 **Acceptance criteria**
-- `docker compose up` starts service.
+- `vercel dev` runs service locally.
+- Vercel deployment succeeds.
 - README is complete.
 
 ---
@@ -340,25 +361,38 @@ Recommendation for “on time/on budget”: **FastAPI (Python)** or **TypeScript
 ## 10) Missing product decisions (to stay on spec, time, budget)
 These materially impact design:
 1. **Authentication / user identity**
-   - Is “Session History” per-user or global?
+   - Is "Session History" per-user or global?
+   - **Decision: Use `anonymousId`** - A UUID that is generated if missing and stored in the user's browser as a cookie for authentication. This enables per-user game history while maintaining simplicity.
 2. **Coordinate convention**
    - 0-based vs 1-based.
+   - **Decision: Use 0-based coordinates** for array/matrix indexing consistency.
 3. **Who goes first**
    - Always human first? Configurable?
-4. **Draw/win status representation**
+   - **Decision: Use a coin flip mechanism** to randomly determine who goes first when a new game session is created.
+4. **Game symbols**
+   - Fixed X/O or customizable?
+   - **Decision: Allow user to specify any unicode character as their symbol**. If not specified, defaults to human="X" and AI="O".
+5. **Draw/win status representation**
    - Strings vs enums; response shape.
-5. **Hosting expectations**
+   - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "WON_X", "WON_O", "DRAW").
+6. **Hosting expectations**
    - Local only vs cloud deployment; need for Postgres.
-6. **API versioning and backwards compatibility**
+   - **Decision: Use Firebase for persistence** and **Vercel for cloud deployments**. Firebase provides real-time database capabilities and scales well, while Vercel offers seamless deployment for Node.js applications.
+7. **API versioning and backwards compatibility**
    - Required now or later?
+   - **Decision: Version API under `/v1`** from the start to enable future evolution without breaking changes.
+8. **API route structure**
+   - **Decision: Use REST Option A routes** (see section 4) with separate endpoints for human moves and AI moves for clear separation of concerns.
 
-If these aren’t specified, the safest default is:
-- No auth (global sessions),
-- 0-based coordinates,
-- human = X goes first,
-- SQLite persistence,
-- REST Option A routes,
-- versioned under `/v1`.
+### Summary of chosen options:
+- **Authentication:** `anonymousId` (UUID stored in browser cookie)
+- **Coordinates:** 0-based
+- **Who goes first:** Coin flip mechanism
+- **Symbols:** User-customizable (any unicode), defaults to X and O
+- **Persistence:** Firebase
+- **Hosting:** Vercel
+- **API routes:** REST Option A
+- **API versioning:** `/v1`
 
 ---
 
@@ -383,10 +417,11 @@ If these aren’t specified, the safest default is:
 
 ## 13) OpenAPI schema draft (OpenAPI 3.0)
 
-> **Defaults assumed for this draft** (until you decide otherwise):
+>**Decisions made**:
 > - Coordinates are **0-based** (`x` and `y` in `0..2`)
-> - Human is **X** and goes first
-> - No authentication; **session history is global**
+> - Player assignments and who goes first determined by **coin flip** at game creation
+> - **Symbols are customizable** (any unicode character); defaults to X and O
+> - Authentication via **`anonymousId`** (UUID in browser cookie); **game history is per-user**
 
 ```yaml
 openapi: 3.0.3
@@ -395,7 +430,9 @@ info:
   version: 1.0.0
   description: |
     REST API for playing Tic-Tac-Toe (Noughts and Crosses) against an optimal AI.
-    This spec assumes 0-based coordinates (x,y in 0..2), human=X goes first.
+    Uses 0-based coordinates (x,y in 0..2). Player assignments and first turn determined by coin flip.
+    Symbols are customizable (any unicode character), defaulting to X and O.
+    Authentication via anonymousId cookie for per-user game tracking.
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -422,7 +459,7 @@ paths:
                     type: string
                     example: ok
 
-  /v1/sessions:
+  /v1/games:
     post:
       tags: [Sessions]
       summary: Create a new game session
@@ -448,7 +485,7 @@ paths:
 
     get:
       tags: [Sessions]
-      summary: List sessions (chronological, newest last by default)
+      summary: List games (chronological, newest last by default)
       parameters:
         - in: query
           name: limit
@@ -478,7 +515,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SessionList'
 
-  /v1/sessions/{sessionId}:
+  /v1/games/{gameId}:
     get:
       tags: [Sessions]
       summary: Get session state
@@ -498,7 +535,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /v1/sessions/{sessionId}/moves:
+  /v1/games/{gameId}/moves:
     post:
       tags: [Moves]
       summary: Make the next human move
@@ -566,7 +603,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /v1/sessions/{sessionId}/ai-move:
+  /v1/games/{gameId}/ai-move:
     post:
       tags: [Moves]
       summary: Let the AI make the next optimal move
@@ -604,7 +641,7 @@ components:
   parameters:
     SessionId:
       in: path
-      name: sessionId
+      name: gameId
       required: true
       schema:
         type: string
@@ -615,13 +652,13 @@ components:
       type: object
       additionalProperties: false
       properties:
-        humanMark:
+        humanSymbol:
           $ref: '#/components/schemas/Mark'
         startingPlayer:
           type: string
           enum: [HUMAN, AI]
       description: |
-        Optional configuration. If omitted: humanMark=X, startingPlayer=HUMAN.
+        Optional configuration. If omitted: humanSymbol=X, startingPlayer=HUMAN.
 
     MoveRequest:
       type: object
@@ -656,9 +693,9 @@ components:
           $ref: '#/components/schemas/Winner'
         board:
           $ref: '#/components/schemas/Board'
-        humanMark:
+        humanSymbol:
           $ref: '#/components/schemas/Mark'
-        aiMark:
+        aiSymbol:
           $ref: '#/components/schemas/Mark'
         nextTurn:
           $ref: '#/components/schemas/Mark'
@@ -671,20 +708,20 @@ components:
         lastMove:
           $ref: '#/components/schemas/Move'
 
-    SessionList:
+    GameList:
       type: object
       additionalProperties: false
-      required: [sessions]
+      required: [games]
       properties:
-        sessions:
+        games:
           type: array
           items:
-            $ref: '#/components/schemas/SessionSummary'
+            $ref: '#/components/schemas/GameSummary'
         nextCursor:
           type: string
           nullable: true
 
-    SessionSummary:
+    GameSummary:
       type: object
       additionalProperties: false
       required: [gameId, createdAt, status]
@@ -753,16 +790,16 @@ components:
 
     Cell:
       type: string
-      enum: ['.', 'X', 'O']
+      description: Either '.' for empty or any unicode character representing a player's symbol
 
     Mark:
       type: string
-      enum: ['X', 'O']
+      description: Any unicode character used as a game symbol. Defaults to 'X' or 'O'.
 
     Winner:
       type: string
-      enum: ['X', 'O']
       nullable: true
+      description: The winning player's symbol (any unicode character) or null if no winner yet
 
     GameStatus:
       type: string
@@ -871,19 +908,26 @@ components:
 ---
 
 ### E. Persistence
-**TT-0401 — DB schema + migrations**
-- Create `sessions` + `moves` tables (SQLite by default).
-- Include indexes: `moves(sessionId, moveNumber)`; `sessions(createdAt)`.
-- **Acceptance**: migrations run cleanly from empty DB.
+**TT-0401 — Firebase schema design**
+- Design `games` collection with fields:
+  - `anonymousId` (string): UUID for user identification
+  - `firstPlayer` (string): either "HUMAN" or "AI" - determined by coin flip
+  - `humanSymbol` (string): any unicode character - user-specified or defaults to "X"
+  - `aiSymbol` (string): any unicode character - user-specified or defaults to "O"
+  - Symbol assignment: symbol comes from the game creation process
+  - `status`, `winner`, `createdAt`, `updatedAt`
+- Design `moves` subcollection with `moveNumber`, `player` (string: "HUMAN" or "AI"), `x`, `y` (0-based coordinates).
+- Include indexes: `games(anonymousId, createdAt)`.
+- **Acceptance**: schema documented and validated with Firebase emulator.
 - **Dependencies**: TT-0101.
 
-**TT-0402 — Repository: sessions**
-- `createSession(config)`, `getSession(id)`, `listSessions(order, limit, cursor)`.
+**TT-0402 — Repository: games**
+- `createGame(config)`, `getGame(id)`, `listGames(order, limit, cursor)`.
 - **Acceptance**: Integration tests for create/get/list.
 - **Dependencies**: TT-0401.
 
 **TT-0403 — Repository: moves**
-- `appendMove(sessionId, move)`, `listMoves(sessionId)`.
+- `appendMove(gameId, move)`, `listMoves(gameId)`.
 - Enforce monotonic `moveNumber` and atomic insert (transaction).
 - **Acceptance**: Integration tests verify ordering and atomicity.
 - **Dependencies**: TT-0401.
@@ -896,13 +940,13 @@ components:
 ---
 
 ### F. Service layer (orchestrating rules + persistence)
-**TT-0501 — Game service: create session**
-- Create session record; return initial state.
+**TT-0501 — Game service: create game**
+- Create game record; return initial state.
 - **Acceptance**: Service tests verify initial board, nextTurn, status.
 - **Dependencies**: TT-0402.
 
 **TT-0502 — Game service: human move**
-- Load session + moves, validate turn, validate move, append move, compute status.
+- Load game + moves, validate turn, validate move, append move, compute status.
 - **Acceptance**: Tests for wrong turn, occupied, finished game.
 - **Dependencies**: TT-0202/0203, TT-0402/0403/0404.
 
@@ -914,7 +958,7 @@ components:
 **TT-0504 — Concurrency protection**
 - Implement one of:
   - DB transaction with `moveNumber` uniqueness + retry, or
-  - session version field (optimistic concurrency).
+  - game version field (optimistic concurrency).
 - **Acceptance**: Simulated concurrent requests do not corrupt move sequence.
 - **Dependencies**: TT-0403, TT-0502.
 
@@ -926,26 +970,26 @@ components:
 - **Acceptance**: `/health` returns ok.
 - **Dependencies**: TT-0101.
 
-**TT-0602 — Implement POST /v1/sessions**
+**TT-0602 — Implement POST /v1/games**
 - Wire to game service; return 201 with state.
-- **Acceptance**: E2E test creates session and returns empty board.
+- **Acceptance**: E2E test creates game and returns empty board.
 - **Dependencies**: TT-0501, TT-0601.
 
-**TT-0603 — Implement POST /v1/sessions/{id}/moves**
+**TT-0603 — Implement POST /v1/games/{id}/moves**
 - Validate payload; map domain errors to HTTP codes.
 - **Acceptance**: E2E test for a valid move; invalid move returns 400/409.
 - **Dependencies**: TT-0502.
 
-**TT-0604 — Implement POST /v1/sessions/{id}/ai-move**
+**TT-0604 — Implement POST /v1/games/{id}/ai-move**
 - **Acceptance**: E2E test: after human move, AI move returns updated board.
 - **Dependencies**: TT-0503.
 
-**TT-0605 — Implement GET /v1/sessions/{id}/moves**
+**TT-0605 — Implement GET /v1/games/{id}/moves**
 - Return chronological move list.
 - **Acceptance**: E2E test confirms ordering and shape.
 - **Dependencies**: TT-0403.
 
-**TT-0606 — Implement GET /v1/sessions**
+**TT-0606 — Implement GET /v1/games**
 - Return chronological session list (with pagination).
 - **Acceptance**: E2E test returns expected ordering.
 - **Dependencies**: TT-0402.
@@ -963,9 +1007,11 @@ components:
 - **Acceptance**: logs include requestId, path, status code.
 - **Dependencies**: TT-0601.
 
-**TT-0702 — Docker + docker-compose**
-- Containerize API; SQLite volume; env vars.
-- **Acceptance**: `docker compose up` works and persists DB.
+**TT-0702 — Vercel deployment configuration**
+- Configure Vercel for cloud deployment.
+- Set up Firebase credentials as environment variables.
+- Configure local development with Firebase emulator.
+- **Acceptance**: `vercel dev` works locally and production deployment succeeds.
 - **Dependencies**: TT-0601.
 
 **TT-0703 — README delivery**
@@ -980,11 +1026,11 @@ components:
 - Store key per session/move to dedupe retries.
 - **Acceptance**: repeated requests with same key return same result.
 
-**TT-0802 — Session version / ETag**
+**TT-0802 — Game version / ETag**
 - Return ETag; require `If-Match` for move endpoints.
 - **Acceptance**: conflicting updates return 412.
 
 **TT-0803 — Auth (if required later)**
-- Add JWT or API key; scope sessions by user.
+- Add JWT or API key; scope games by user.
 - **Acceptance**: session listing only includes user’s sessions.
 
