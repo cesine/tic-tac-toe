@@ -19,6 +19,7 @@
 - Prefer `rg` for search.
 - Use `apply_patch` for single-file edits when practical.
 - Avoid touching unrelated files; do not reformat broadly.
+- Use the latest versions of GitHub Actions in workflows (e.g., `actions/checkout@v6`, `actions/setup-node@v6`).
 
 ## ExecPlans
 - Use ExecPlans for complex or tricky work, following the ExecPlans guidance in `PLANS.md`.
