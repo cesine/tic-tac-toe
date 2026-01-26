@@ -18,3 +18,11 @@
 - Prefer `rg` for search.
 - Use `apply_patch` for single-file edits when practical.
 - Avoid touching unrelated files; do not reformat broadly.
+
+## Proving Changes Work
+- Run the smallest relevant checks for your change.
+- Typical options:
+  - Unit tests: `npm test`
+  - E2E tests: `npm run test:e2e`
+  - Lint: `npm run lint`
+- If no automated check fits, note the manual verification steps performed.
