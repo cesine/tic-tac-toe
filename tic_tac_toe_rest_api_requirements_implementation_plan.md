@@ -878,9 +878,9 @@ components:
 **TT-0101 — Repo scaffold + build tooling**
 - Create folder structure: `src/` (api/domain/persistence), `tests/`, `migrations/`, `scripts/`.
 - Set up chosen framework and libraries from TT-0100.
-- Add formatting/linting/test commands and npm scripts.
+- Add formatting/linting/test commands and build scripts.
 - Configure TypeScript with strict mode.
-- **Acceptance**: `npm run lint` + `npm run test` run successfully.
+- **Acceptance**: lint and test commands run successfully.
 - **Dependencies**: TT-0100 (library selection).
 
 **TT-0102 — CI pipeline**
