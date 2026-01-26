@@ -18,12 +18,9 @@ Non-goals (unless explicitly added later): UI, multiplayer PvP, realtime websock
 - Board is **3×3**, coordinates are `{x, y}` with **0–2** bounds (or 1–3; must be consistent and documented).
 - Two symbols: Customizable (any unicode character).
   - Default: **X** and **O** if not specified by user.
-  - User can choose their preferred symbol when creating a game.
+  - User can choose their preferred symbol for the humanSymbol (default is "X") and aiSymbol (default is "O") when creating a game.
 - Turn-based:
   - At game creation, a coin flip determines which player goes first.
-  - The first player is assigned the first symbol (default "X"), the second player is assigned the second symbol (default "O").
-  - This applies regardless of whether first player is human or AI.
-  - If user specifies custom symbols, first player gets the first custom symbol, second gets the second.
   - Enforce correct turn order (cannot play twice).
 - Valid move:
   - Cell must be empty.
@@ -374,7 +371,7 @@ These materially impact design:
    - **Decision: Use a coin flip mechanism** to randomly determine who goes first when a new game session is created.
 4. **Game symbols**
    - Fixed X/O or customizable?
-   - **Decision: Allow user to specify any unicode character as their symbol**. If not specified, defaults to human="X" and AI="O". First player (determined by coin flip) gets the first symbol, second player gets the second symbol.
+   - **Decision: Allow user to specify any unicode character as their symbol**. If not specified, defaults to human="X" and AI="O".
 5. **Draw/win status representation**
    - Strings vs enums; response shape.
    - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "WON_X", "WON_O", "DRAW").
@@ -917,7 +914,7 @@ components:
   - `firstPlayer` (string): either "HUMAN" or "AI" - determined by coin flip
   - `humanSymbol` (string): any unicode character - user-specified or defaults to "X"
   - `aiSymbol` (string): any unicode character - user-specified or defaults to "O"
-  - Symbol assignment: first player gets first symbol, second player gets second symbol
+  - Symbol assignment: symbol comes from the game creation process
   - `status`, `winner`, `createdAt`, `updatedAt`
 - Design `moves` subcollection with `moveNumber`, `player` (string: "HUMAN" or "AI"), `x`, `y` (0-based coordinates).
 - Include indexes: `games(anonymousId, createdAt)`.
