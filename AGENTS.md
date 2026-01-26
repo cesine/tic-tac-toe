@@ -19,6 +19,10 @@
 - Use `apply_patch` for single-file edits when practical.
 - Avoid touching unrelated files; do not reformat broadly.
 
+## ExecPlans
+- Use ExecPlans for complex or tricky work, following the ExecPlans guidance in `PLANS.md`.
+- Treat ExecPlans as living documents and keep them updated as work progresses.
+
 ## Proving Changes Work
 - Run the smallest relevant checks for your change.
 - Typical options:
