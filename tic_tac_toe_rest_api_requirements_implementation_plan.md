@@ -838,11 +838,13 @@ components:
 ## 14) Detailed task list (Agentive tickets)
 
 > Format: **Ticket** — goal, key tasks, acceptance criteria, dependencies.
+> 
+> **Note**: This list focuses on high-level architecture and non-functional requirements that must be completed first. Detailed functional requirement tasks (domain engine, AI implementation, service layer, specific API endpoints) will be broken down in subsequent planning once the architecture is established.
 
-### A. Product decisions (fast unblock)
+### A. Product decisions and API contract
 **TT-0001 — Confirm product decisions / defaults**
 - Decide: auth vs no-auth; coordinate convention; who goes first; session ordering; pagination; response shape.
-- Produce: short “decisions.md” capturing defaults.
+- Produce: short "decisions.md" capturing defaults.
 - **Acceptance**: decisions.md committed; OpenAPI matches decisions.
 - **Dependencies**: none.
 
@@ -854,183 +856,103 @@ components:
 
 ---
 
-### B. Repository + tooling
+### B. Technology stack and library selection
+**TT-0100 — Select core libraries for schema/REST API/types integration**
+- Evaluate and select libraries that maintain relationships between:
+  - Entity schema definition
+  - Firebase Firestore data models
+  - TypeScript type definitions
+  - REST API route definitions and validation
+- Consider options:
+  - NestJS with class-validator and class-transformer
+  - TypeORM or similar ORM-style tools (if compatible with Firebase)
+  - OpenAPI code generation tools (swagger-codegen, openapi-generator)
+  - Firebase Admin SDK with custom type definitions
+- Document chosen approach and rationale.
+- **Acceptance**: Technology decision documented; sample proof-of-concept showing schema-to-API-to-types flow.
+- **Dependencies**: TT-0001.
+
+---
+
+### C. Repository scaffold and tooling
 **TT-0101 — Repo scaffold + build tooling**
 - Create folder structure: `src/` (api/domain/persistence), `tests/`, `migrations/`, `scripts/`.
-- Add formatting/linting/test commands and Makefile targets.
-- **Acceptance**: `make lint` + `make test` run locally.
-- **Dependencies**: TT-0001 (language selection).
+- Set up chosen framework and libraries from TT-0100.
+- Add formatting/linting/test commands and npm scripts.
+- Configure TypeScript with strict mode.
+- **Acceptance**: `npm run lint` + `npm run test` run successfully.
+- **Dependencies**: TT-0100 (library selection).
 
 **TT-0102 — CI pipeline**
-- Configure CI to run lint + tests on PR.
-- **Acceptance**: CI green on main.
+- Configure GitHub Actions to run lint + tests on PR.
+- Set up build verification.
+- **Acceptance**: CI green on main; pipeline runs on every PR.
 - **Dependencies**: TT-0101.
 
 ---
 
-### C. Domain engine (rules)
-**TT-0201 — Domain models**
-- Define domain types: `Mark`, `Cell`, `Board`, `Move`, `GameStatus`, `GameSession`.
-- Ensure immutability where appropriate (board copies vs in-place).
-- **Acceptance**: Type checks pass; basic constructors tested.
+### D. Infrastructure and deployment setup
+**TT-0401 — Firebase project setup**
+- Create Firebase project and configure Firestore database.
+- Design high-level collection structure: `games` collection with `moves` subcollection.
+- Document schema conventions (anonymousId, 0-based coordinates, coin flip mechanism).
+- Set up Firebase emulator for local development.
+- **Acceptance**: Firebase emulator runs locally; basic read/write operations work.
 - **Dependencies**: TT-0101.
-
-**TT-0202 — Move validation + apply move**
-- Validate bounds and emptiness.
-- Apply mark to board; update nextTurn.
-- **Acceptance**: Unit tests cover out-of-range, occupied, correct placement.
-- **Dependencies**: TT-0201.
-
-**TT-0203 — Win/draw detection**
-- Implement `evaluate(board) -> status/winner`.
-- **Acceptance**: Unit tests cover all 8 win lines, draw, and in-progress.
-- **Dependencies**: TT-0201.
-
-**TT-0204 — Legal move generation**
-- Implement `listLegalMoves(board)`.
-- **Acceptance**: Unit test verifies correct count/positions.
-- **Dependencies**: TT-0201.
-
----
-
-### D. AI (optimal)
-**TT-0301 — Minimax + alpha-beta implementation**
-- Implement deterministic tie-break (e.g., center > corners > edges OR stable ordering).
-- Return best move for AI mark.
-- **Acceptance**: Unit tests include classic forks/traps; AI never loses.
-- **Dependencies**: TT-0202, TT-0203, TT-0204.
-
-**TT-0302 — AI integration tests**
-- Simulate full games from various starting positions.
-- **Acceptance**: Tests show AI results in win when possible; otherwise draw.
-- **Dependencies**: TT-0301.
-
----
-
-### E. Persistence
-**TT-0401 — Firebase schema design**
-- Design `games` collection with fields:
-  - `anonymousId` (string): UUID for user identification
-  - `firstPlayer` (string): either "HUMAN" or "AI" - determined by coin flip
-  - `humanSymbol` (string): any unicode character - user-specified or defaults to "X"
-  - `aiSymbol` (string): any unicode character - user-specified or defaults to "O"
-  - Symbol assignment: symbol comes from the game creation process
-  - `status`, `winner`, `createdAt`, `updatedAt`
-- Design `moves` subcollection with `moveNumber`, `player` (string: "HUMAN" or "AI"), `x`, `y` (0-based coordinates).
-- Include indexes: `games(anonymousId, createdAt)`.
-- **Acceptance**: schema documented and validated with Firebase emulator.
-- **Dependencies**: TT-0101.
-
-**TT-0402 — Repository: games**
-- `createGame(config)`, `getGame(id)`, `listGames(order, limit, cursor)`.
-- **Acceptance**: Integration tests for create/get/list.
-- **Dependencies**: TT-0401.
-
-**TT-0403 — Repository: moves**
-- `appendMove(gameId, move)`, `listMoves(gameId)`.
-- Enforce monotonic `moveNumber` and atomic insert (transaction).
-- **Acceptance**: Integration tests verify ordering and atomicity.
-- **Dependencies**: TT-0401.
-
-**TT-0404 — Reconstruct board from moves**
-- Domain service function that rebuilds board/status from session config + move list.
-- **Acceptance**: Unit tests compare reconstructed board to expected.
-- **Dependencies**: TT-0202, TT-0203, TT-0403.
-
----
-
-### F. Service layer (orchestrating rules + persistence)
-**TT-0501 — Game service: create game**
-- Create game record; return initial state.
-- **Acceptance**: Service tests verify initial board, nextTurn, status.
-- **Dependencies**: TT-0402.
-
-**TT-0502 — Game service: human move**
-- Load game + moves, validate turn, validate move, append move, compute status.
-- **Acceptance**: Tests for wrong turn, occupied, finished game.
-- **Dependencies**: TT-0202/0203, TT-0402/0403/0404.
-
-**TT-0503 — Game service: AI move**
-- Load state, validate AI turn, compute best move, append, return updated state.
-- **Acceptance**: Tests confirm deterministic best move and correct status transitions.
-- **Dependencies**: TT-0301, TT-0502.
-
-**TT-0504 — Concurrency protection**
-- Implement one of:
-  - DB transaction with `moveNumber` uniqueness + retry, or
-  - game version field (optimistic concurrency).
-- **Acceptance**: Simulated concurrent requests do not corrupt move sequence.
-- **Dependencies**: TT-0403, TT-0502.
-
----
-
-### G. REST API
-**TT-0601 — HTTP server + routing**
-- Set up framework, `/health`, base middleware.
-- **Acceptance**: `/health` returns ok.
-- **Dependencies**: TT-0101.
-
-**TT-0602 — Implement POST /v1/games**
-- Wire to game service; return 201 with state.
-- **Acceptance**: E2E test creates game and returns empty board.
-- **Dependencies**: TT-0501, TT-0601.
-
-**TT-0603 — Implement POST /v1/games/{id}/moves**
-- Validate payload; map domain errors to HTTP codes.
-- **Acceptance**: E2E test for a valid move; invalid move returns 400/409.
-- **Dependencies**: TT-0502.
-
-**TT-0604 — Implement POST /v1/games/{id}/ai-move**
-- **Acceptance**: E2E test: after human move, AI move returns updated board.
-- **Dependencies**: TT-0503.
-
-**TT-0605 — Implement GET /v1/games/{id}/moves**
-- Return chronological move list.
-- **Acceptance**: E2E test confirms ordering and shape.
-- **Dependencies**: TT-0403.
-
-**TT-0606 — Implement GET /v1/games**
-- Return chronological session list (with pagination).
-- **Acceptance**: E2E test returns expected ordering.
-- **Dependencies**: TT-0402.
-
-**TT-0607 — OpenAPI + Swagger UI**
-- Serve OpenAPI doc; auto-generate if framework supports.
-- **Acceptance**: Swagger UI loads and can exercise endpoints.
-- **Dependencies**: TT-0002, TT-0601.
-
----
-
-### H. Quality, docs, and release
-**TT-0701 — Structured logging + request IDs**
-- Add request ID middleware and structured logs.
-- **Acceptance**: logs include requestId, path, status code.
-- **Dependencies**: TT-0601.
 
 **TT-0702 — Vercel deployment configuration**
 - Configure Vercel for cloud deployment.
 - Set up Firebase credentials as environment variables.
-- Configure local development with Firebase emulator.
-- **Acceptance**: `vercel dev` works locally and production deployment succeeds.
-- **Dependencies**: TT-0601.
-
-**TT-0703 — README delivery**
-- Run instructions (local + docker), assumptions, trade-offs, curl examples.
-- **Acceptance**: new developer can run in <10 minutes.
-- **Dependencies**: TT-0702, TT-0607.
+- Configure environment-specific settings (local/staging/production).
+- Wire up health check endpoint.
+- **Acceptance**: `vercel dev` works locally; health check endpoint returns 200; production deployment succeeds.
+- **Dependencies**: TT-0101, TT-0401.
 
 ---
 
-### Optional “high leverage” tickets (recommended if time allows)
-**TT-0801 — Idempotency-Key support**
-- Store key per session/move to dedupe retries.
-- **Acceptance**: repeated requests with same key return same result.
+### E. Core infrastructure components
+**TT-0601 — HTTP server framework setup**
+- Set up HTTP framework with routing.
+- Implement base middleware: CORS, body parsing, error handling.
+- Implement `/health` endpoint.
+- Set up versioned API routing under `/v1`.
+- **Acceptance**: `/health` returns ok; framework starts and responds to requests.
+- **Dependencies**: TT-0101.
 
-**TT-0802 — Game version / ETag**
-- Return ETag; require `If-Match` for move endpoints.
-- **Acceptance**: conflicting updates return 412.
+**TT-0701 — Structured logging and monitoring**
+- Add request ID middleware and structured logging library.
+- Configure log levels and output format.
+- Add basic request/response logging.
+- **Acceptance**: logs include requestId, method, path, status code, duration.
+- **Dependencies**: TT-0601.
 
-**TT-0803 — Auth (if required later)**
-- Add JWT or API key; scope games by user.
-- **Acceptance**: session listing only includes user’s sessions.
+---
 
+### F. Documentation and development workflow
+**TT-0607 — OpenAPI integration and documentation**
+- Integrate OpenAPI spec with the application.
+- Set up Swagger UI to serve interactive API docs.
+- Ensure schema validation is enforced at API boundaries.
+- **Acceptance**: Swagger UI loads at `/api-docs`; spec matches implementation.
+- **Dependencies**: TT-0002, TT-0601.
+
+**TT-0703 — Developer README and setup guide**
+- Document local development setup (prerequisites, installation, configuration).
+- Document Firebase emulator usage.
+- Document Vercel deployment process.
+- Include architecture overview and library choices.
+- Provide example curl commands for testing.
+- **Acceptance**: new developer can run application locally in <10 minutes.
+- **Dependencies**: TT-0101, TT-0401, TT-0702.
+
+---
+
+### G. Next steps (to be broken down after architecture is complete)
+Once the above architecture and infrastructure tasks are complete, the following functional areas will be broken down into detailed implementation tickets:
+
+1. **Domain layer**: Game rules, move validation, win/draw detection, legal move generation
+2. **AI implementation**: Minimax algorithm with alpha-beta pruning
+3. **Persistence layer**: Firebase repository implementations for games and moves
+4. **Service layer**: Game orchestration, move processing, concurrency handling
+5. **REST API endpoints**: Individual endpoint implementations for game creation, moves, AI moves, game listing
+6. **Optional enhancements**: Idempotency support, ETag/versioning, future auth support
