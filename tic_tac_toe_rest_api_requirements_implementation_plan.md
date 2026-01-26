@@ -111,10 +111,7 @@ Example routes:
 - Works well with standard tooling.
 
 **Cons**
-- Two endpoints for moves (human vs AI).
-
-**Missing info to choose**
-- Do you want a single endpoint that can accept either human or AI action?
+-  No easy way to e2e test specific game state
 
 ### Option B: Single “advance” endpoint
 - `POST /v1/games/{id}/advance` with body `{ type: "HUMAN", x, y }` or `{ type: "AI" }`
@@ -236,7 +233,7 @@ Recommendation: **Event-sourced moves + cached reconstruction** (simple, correct
 
 ## 8) Tech stack options (language/framework)
 
-### Option A: TypeScript + Node (Fastify or Express)
+### Option A: TypeScript + Nest.js (Fastify or Express)
 **Pros**
 - Great ecosystem for REST APIs, strong typing.
 - Easy JSON handling.
@@ -374,7 +371,7 @@ These materially impact design:
    - **Decision: Allow user to specify any unicode character as their symbol**. If not specified, defaults to human="X" and AI="O".
 5. **Draw/win status representation**
    - Strings vs enums; response shape.
-   - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "WON_X", "WON_O", "DRAW").
+   - **Decision: Use string literals** for status representation (e.g., "IN_PROGRESS", "WON_HUMAN", "WON_AI", "DRAW").
 6. **Hosting expectations**
    - Local only vs cloud deployment; need for Postgres.
    - **Decision: Use Firebase for persistence** and **Vercel for cloud deployments**. Firebase provides real-time database capabilities and scales well, while Vercel offers seamless deployment for Node.js applications.
@@ -397,7 +394,7 @@ These materially impact design:
 ---
 
 ## 11) README contents (delivery checklist)
-- How to run locally (direct + docker)
+- How to run locally (direct or with emulator)
 - Configuration (PORT, DB_URL)
 - API docs location (OpenAPI/Swagger)
 - Assumptions
