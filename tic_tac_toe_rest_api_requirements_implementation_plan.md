@@ -865,7 +865,7 @@ components:
   - REST API route definitions and validation
 - Consider options:
   - NestJS with class-validator and class-transformer
-  - TypeORM or similar ORM-style tools (if compatible with Firebase)
+  - Firestore-compatible ODM tools or custom repository patterns
   - OpenAPI code generation tools (swagger-codegen, openapi-generator)
   - Firebase Admin SDK with custom type definitions
 - Document chosen approach and rationale.
