@@ -18,8 +18,9 @@ Non-goals (unless explicitly added later): UI, multiplayer PvP, realtime websock
 - Board is **3×3**, coordinates are `{x, y}` with **0–2** bounds (or 1–3; must be consistent and documented).
 - Two symbols: **X** and **O**.
 - Turn-based:
-  - Player assignments (X and O) are determined by coin flip at session creation.
-  - The coin flip also determines who goes first.
+  - At session creation, a coin flip determines which player goes first.
+  - The first player is assigned **X**, the second player is assigned **O**.
+  - This means: if human wins coin flip → human is X and goes first; if AI wins → AI is X and goes first.
   - Enforce correct turn order (cannot play twice).
 - Valid move:
   - Cell must be empty.
@@ -901,8 +902,13 @@ components:
 
 ### E. Persistence
 **TT-0401 — Firebase schema design**
-- Design `sessions` collection with `anonymousId`, `firstPlayer` (determined by coin flip), and game metadata.
-- Design `moves` subcollection with `moveNumber`, `player`, `x`, `y` (0-based coordinates).
+- Design `sessions` collection with fields:
+  - `anonymousId` (string): UUID for user identification
+  - `firstPlayer` (string): either "HUMAN" or "AI" - determined by coin flip
+  - `humanSymbol` (string): either "X" or "O" - based on who goes first
+  - `aiSymbol` (string): either "X" or "O" - opposite of humanSymbol
+  - `status`, `winner`, `createdAt`, `updatedAt`
+- Design `moves` subcollection with `moveNumber`, `player` (string: "HUMAN" or "AI"), `x`, `y` (0-based coordinates).
 - Include indexes: `sessions(anonymousId, createdAt)`.
 - **Acceptance**: schema documented and validated with Firebase emulator.
 - **Dependencies**: TT-0101.
