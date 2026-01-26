@@ -31,3 +31,8 @@
 - Start with a test that captures the requirement before implementing.
 - Keep the test minimal and focused on the behavior under change.
 - Use the failing test to guide implementation; stop when it passes.
+
+## Design Decisions
+- Consider at least two implementation options before coding.
+- Record the decision in the PR/notes with links to supporting sources
+  (docs, articles, blogs, or similar).
