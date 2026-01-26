@@ -27,6 +27,11 @@
   - Lint: `npm run lint`
 - If no automated check fits, note the manual verification steps performed.
 
+## E2E Coverage
+- Add or update E2E cases for new behaviors and edge conditions.
+- Avoid reducing coverage; if unavoidable, explain why and add follow-up tasks.
+- Prefer end-to-end assertions that validate full request/response flow.
+
 ## TDD Expectations
 - Start with a test that captures the requirement before implementing.
 - Keep the test minimal and focused on the behavior under change.
