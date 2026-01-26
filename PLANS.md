@@ -138,14 +138,7 @@ Include the most important transcripts, diffs, or snippets as indented examples.
 
 ## Interfaces and Dependencies
 
-Be prescriptive. Name the libraries, modules, and services to use and why. Specify the types, traits/interfaces, and function signatures that must exist at the end of the milestone. Prefer stable names and paths such as `crate::module::function` or `package.submodule.Interface`. E.g.:
-
-In crates/foo/planner.rs, define:
-
-    pub trait Planner {
-        fn plan(&self, observed: &Observed) -> Vec<Action>;
-    }
-```
+Be prescriptive. Name the libraries, modules, and services to use and why. Specify the types, traits/interfaces, and function signatures that must exist at the end of the milestone.
 
 If you follow the guidance above, a single, stateless agent -- or a human novice -- can read your ExecPlan from top to bottom and produce a working, observable result. That is the bar: SELF-CONTAINED, SELF-SUFFICIENT, NOVICE-GUIDING, OUTCOME-FOCUSED.
 
