@@ -45,10 +45,10 @@ Provide endpoints to support:
 ### 2.3 Data returned
 Every state-changing endpoint should return at minimum:
 - `gameId`
-- `board` (3×3 array of strings: "." | "X" | "O")
-- `nextPlayer` ("HUMAN"/"AI" or "X"/"O")
-- `status` (IN_PROGRESS | WON_X | WON_O | DRAW)
-- `winner` (optional: X/O/null)
+- `board` (3×3 array of strings: "." for empty cells or any unicode character representing player symbols)
+- `nextPlayer` ("HUMAN"/"AI" or the symbol for next player)
+- `status` (IN_PROGRESS | WON_<symbol> | DRAW where <symbol> is the winning player's symbol)
+- `winner` (optional: symbol of winning player or null)
 - `lastMove` (optional)
 - `moveNumber` (ply count)
 
