@@ -655,13 +655,13 @@ components:
       type: object
       additionalProperties: false
       properties:
-        humanMark:
+        humanSymbol:
           $ref: '#/components/schemas/Mark'
         startingPlayer:
           type: string
           enum: [HUMAN, AI]
       description: |
-        Optional configuration. If omitted: humanMark=X, startingPlayer=HUMAN.
+        Optional configuration. If omitted: humanSymbol=X, startingPlayer=HUMAN.
 
     MoveRequest:
       type: object
@@ -696,9 +696,9 @@ components:
           $ref: '#/components/schemas/Winner'
         board:
           $ref: '#/components/schemas/Board'
-        humanMark:
+        humanSymbol:
           $ref: '#/components/schemas/Mark'
-        aiMark:
+        aiSymbol:
           $ref: '#/components/schemas/Mark'
         nextTurn:
           $ref: '#/components/schemas/Mark'
@@ -711,20 +711,20 @@ components:
         lastMove:
           $ref: '#/components/schemas/Move'
 
-    SessionList:
+    GameList:
       type: object
       additionalProperties: false
-      required: [sessions]
+      required: [games]
       properties:
-        sessions:
+        games:
           type: array
           items:
-            $ref: '#/components/schemas/SessionSummary'
+            $ref: '#/components/schemas/GameSummary'
         nextCursor:
           type: string
           nullable: true
 
-    SessionSummary:
+    GameSummary:
       type: object
       additionalProperties: false
       required: [gameId, createdAt, status]
@@ -793,16 +793,16 @@ components:
 
     Cell:
       type: string
-      enum: ['.', 'X', 'O']
+      description: Either '.' for empty or any unicode character representing a player's symbol
 
     Mark:
       type: string
-      enum: ['X', 'O']
+      description: Any unicode character used as a game symbol. Defaults to 'X' or 'O'.
 
     Winner:
       type: string
-      enum: ['X', 'O']
       nullable: true
+      description: The winning player's symbol (any unicode character) or null if no winner yet
 
     GameStatus:
       type: string
@@ -943,7 +943,7 @@ components:
 ---
 
 ### F. Service layer (orchestrating rules + persistence)
-**TT-0501 — Game service: create session**
+**TT-0501 — Game service: create game**
 - Create game record; return initial state.
 - **Acceptance**: Service tests verify initial board, nextTurn, status.
 - **Dependencies**: TT-0402.
@@ -961,7 +961,7 @@ components:
 **TT-0504 — Concurrency protection**
 - Implement one of:
   - DB transaction with `moveNumber` uniqueness + retry, or
-  - session version field (optimistic concurrency).
+  - game version field (optimistic concurrency).
 - **Acceptance**: Simulated concurrent requests do not corrupt move sequence.
 - **Dependencies**: TT-0403, TT-0502.
 
@@ -975,7 +975,7 @@ components:
 
 **TT-0602 — Implement POST /v1/games**
 - Wire to game service; return 201 with state.
-- **Acceptance**: E2E test creates session and returns empty board.
+- **Acceptance**: E2E test creates game and returns empty board.
 - **Dependencies**: TT-0501, TT-0601.
 
 **TT-0603 — Implement POST /v1/games/{id}/moves**
@@ -1029,11 +1029,11 @@ components:
 - Store key per session/move to dedupe retries.
 - **Acceptance**: repeated requests with same key return same result.
 
-**TT-0802 — Session version / ETag**
+**TT-0802 — Game version / ETag**
 - Return ETag; require `If-Match` for move endpoints.
 - **Acceptance**: conflicting updates return 412.
 
 **TT-0803 — Auth (if required later)**
-- Add JWT or API key; scope sessions by user.
+- Add JWT or API key; scope games by user.
 - **Acceptance**: session listing only includes user’s sessions.
 
