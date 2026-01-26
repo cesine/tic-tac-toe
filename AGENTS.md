@@ -6,6 +6,7 @@
 - Install deps: `npm install`
 - Run dev: `npm run start:dev`
 - Lint: `npm run lint`
+- Format: `npm run format`
 - Test: `npm test`
 - E2E: `npm run test:e2e`
 
