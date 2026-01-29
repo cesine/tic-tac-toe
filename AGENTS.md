@@ -32,6 +32,7 @@
   - E2E tests: `npm run test:e2e`
   - Lint: `npm run lint`
 - If no automated check fits, note the manual verification steps performed.
+- Keep tests focused on a specific area of the codebase; split large test files into smaller suites when they grow.
 
 ## E2E Coverage
 - Add or update E2E cases for new behaviors and edge conditions.
