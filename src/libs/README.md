@@ -130,6 +130,15 @@ The steps are additive and can be repeated safely. If a proof‑of‑concept is 
 
 Keep any short logs or diffs here that demonstrate the proof‑of‑concept behavior (for example, a REST request and GraphQL query that both return the same model).
 
+Game entity spike (code‑first) notes:
+- Generation: `./node_modules/.bin/nest g resource game` followed by `./node_modules/.bin/nest g resolver game` to scaffold REST + GraphQL files in `src/game`.
+- Testing: `npm test` and `npm run test:e2e` (e2e covers REST + GraphQL game flows and error cases).
+- Sources consulted for code‑first GraphQL and schema generation:
+  `https://docs.nestjs.com/graphql/quick-start`
+  `https://docs.nestjs.com/graphql/resolvers`
+  `https://docs.nestjs.com/graphql/generating-sdl`
+  `https://docs.nestjs.com/graphql/cli-plugin`
+
 ---
 
 Plan update note (2026-01-27): Updated TT‑0100 ExecPlan with evaluation criteria focused on single source of truth and outlined concrete proof‑of‑concept spikes for schema‑first vs code‑first.

@@ -5,6 +5,7 @@ import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppResolver } from './app.resolver';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AppResolver } from './app.resolver';
       sortSchema: true,
       playground: true,
     }),
+    GameModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],
