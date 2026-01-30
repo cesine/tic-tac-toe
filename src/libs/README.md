@@ -14,7 +14,7 @@ After this work, the project will have a clear, documented choice for how to def
 - [x] (2026-01-27 14:02Z) Create `src/libs/README.md` to host this ExecPlan.
 - [x] (2026-01-27 14:05Z) Define evaluation criteria for “minimal boilerplate” and single source of truth.
 - [x] (2026-01-27 14:05Z) Gather and summarize concrete integration options with NestJS (schema-first vs code-first).
-- [ ] Run a tiny proof‑of‑concept for the top two options.
+- [ ] Run a tiny proof‑of‑concept for the top two options (completed: schema-first spike on this branch; remaining: code-first spike in separate branch).
 - [ ] Record the decision, tradeoffs, and chosen option in this README.
 
 ## Surprises & Discoveries
@@ -129,6 +129,19 @@ The steps are additive and can be repeated safely. If a proof‑of‑concept is 
 ## Artifacts and Notes
 
 Keep any short logs or diffs here that demonstrate the proof‑of‑concept behavior (for example, a REST request and GraphQL query that both return the same model).
+
+Game entity spike (schema‑first) notes:
+- Schema source: `src/schema.graphql` defines Game types, inputs, queries, and mutations.
+- Implementation: `src/game` provides REST controller + GraphQL resolver using schema-first decorators (`@Resolver('Game')`, `@Query('game')`, `@Mutation('createGame')`).
+- Testing: `npm test` and `npm run test:e2e` (e2e covers REST + GraphQL game flows and error cases).
+- Sources consulted for schema‑first GraphQL:
+  `https://docs.nestjs.com/graphql/quick-start`
+  `https://docs.nestjs.com/graphql/resolvers`
+  `https://docs.nestjs.com/graphql/interfaces`
+  `https://docs.nestjs.com/graphql/schema-first`
+
+Schema-first spike generation notes:
+- Files were created manually to mirror schema-first requirements (SDL in `src/schema.graphql`, resolver/controller/module in `src/game`), since Nest generators primarily scaffold code-first GraphQL.
 
 ---
 

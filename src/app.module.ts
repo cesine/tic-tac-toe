@@ -5,15 +5,17 @@ import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppResolver } from './app.resolver';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      typePaths: [join(process.cwd(), 'src/**/*.graphql')],
       sortSchema: true,
       playground: true,
     }),
+    GameModule,
   ],
   controllers: [AppController],
   providers: [AppService, AppResolver],
