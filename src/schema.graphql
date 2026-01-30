@@ -1,0 +1,41 @@
+type Game {
+  id: ID!
+  status: GameStatus!
+  humanSymbol: String!
+  aiSymbol: String!
+  nextTurn: String!
+  moveNumber: Int!
+  winner: String
+  label: String
+}
+
+enum GameStatus {
+  IN_PROGRESS
+  WON_HUMAN
+  WON_AI
+  DRAW
+}
+
+input CreateGameInput {
+  humanSymbol: String
+  aiSymbol: String
+  label: String
+}
+
+input UpdateGameInput {
+  humanSymbol: String
+  aiSymbol: String
+  label: String
+}
+
+type Query {
+  hello: String!
+  games: [Game!]!
+  game(id: String!): Game
+}
+
+type Mutation {
+  createGame(input: CreateGameInput!): Game!
+  updateGame(id: String!, input: UpdateGameInput!): Game
+  removeGame(id: String!): Game
+}

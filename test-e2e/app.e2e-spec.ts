@@ -4,15 +4,6 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
-interface GraphQLResponse<T = unknown> {
-  data?: T;
-  errors?: Array<{ message: string }>;
-}
-
-interface HelloQueryResponse {
-  hello: string;
-}
-
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let baseUrl: string;
@@ -28,8 +19,12 @@ describe('AppController (e2e)', () => {
       }).compile();
 
       app = moduleFixture.createNestApplication();
-      await app.init();
-      baseUrl = '';
+      await app.listen(0, '127.0.0.1');
+      const address = app.getHttpServer().address();
+      if (!address || typeof address === 'string') {
+        throw new Error('Failed to start HTTP server for e2e tests.');
+      }
+      baseUrl = `http://127.0.0.1:${address.port}`;
     }
   });
 
@@ -39,14 +34,14 @@ describe('AppController (e2e)', () => {
     }
   });
 
+  const httpRequest = () => request(baseUrl);
+
   it('/ (GET)', () => {
-    const req = baseUrl ? request(baseUrl) : request(app.getHttpServer());
-    return req.get('/').expect(200).expect('Hello World!');
+    return httpRequest().get('/').expect(200).expect('Hello World!');
   });
 
   it('/graphql (POST) - hello query', () => {
-    const req = baseUrl ? request(baseUrl) : request(app.getHttpServer());
-    return req
+    return httpRequest()
       .post('/graphql')
       .set('Content-Type', 'application/json')
       .send({
@@ -54,8 +49,7 @@ describe('AppController (e2e)', () => {
       })
       .expect(200)
       .expect((res) => {
-        const body = res.body as GraphQLResponse<HelloQueryResponse>;
-        expect(body.data?.hello).toBe('Hello World from GraphQL!');
+        expect(res.body?.data?.hello).toBe('Hello World from GraphQL!');
       });
   });
 });
